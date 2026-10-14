@@ -17,3 +17,6 @@ sportsedge = "sportsedge.cli:main"
 
 [tool.setuptools.package-data]
 sportsedge = ["dashboard.html"]
+
+[tool.setuptools.packages.find]
+include = ["sportsedge*"]
