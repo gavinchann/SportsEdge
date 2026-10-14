@@ -1,89 +1,109 @@
 # SportsEdge
 
-A runnable research starter for **NBA, NFL, and MLB home-win prediction**. It includes CSV ingestion, point-in-time head-to-head and availability features, three baselines, walk-forward evaluation, a local dashboard, and a read-only API.
+Outcome-prediction research for **NBA, NFL, MLB and NHL**. Includes reproducible public-result ingestion, time-aware H2H and availability features, five model variants, chronological backtesting, saved model artifacts and a local dashboard/API.
 
-**Draft status:** the included generator creates fictional games and players. Its results demonstrate functioning software, not predictive skill on real sports. No real historical dataset, injury feed, odds feed, betting execution, or profitability evaluation is included.
+**Current status:** trained and evaluated on real archived results from 2023–2024. These archives lack historical publication/observation timestamps, so retrospective evaluations explicitly use a configurable result-delay assumption. Historical injuries are **not available** in this run. This is a research prototype, not a live betting service or evidence of profitability.
 
-## Run locally
+## Quick start
 
-Requires Python 3.11 or newer. No third-party runtime dependencies or API keys.
+Python 3.11+; core demo needs no third-party packages. From the repository directory:
 
 ```sh
-python -m sportsedge demo --output data/demo --seed 42
-python -m sportsedge run --games data/demo/games.csv --availability data/demo/availability.csv --data-kind synthetic --output runs/latest
-python -m unittest discover -s tests -v
-python -m sportsedge serve --report runs/latest/report.json --port 8765
+python -m sportsedge demo --seed 42
+python -m sportsedge run --games data/demo/games.csv --availability data/demo/availability.csv --output runs/demo
+python -m sportsedge serve --report runs/demo/report.json --port 8765
 ```
 
-Open http://127.0.0.1:8765. Stop with Ctrl+C. The server binds only to localhost and loads the report at startup; restart it after generating a new report. `GET /api/health` reports health; `GET /api/report` serves the full report, including predictions, model coefficients, fold provenance, and calibration bins. It is a local research server, not a production deployment.
+Open http://127.0.0.1:8765. Use the league/model dropdowns to inspect predictions, calibration and injury coverage. The server binds only to loopback, loads its report at startup, and stops with Ctrl+C. Restart it after regenerating a report.
 
-Optional installation: `python -m pip install -e .`, then use `sportsedge` instead of `python -m sportsedge`.
+## Reproduce the real-data experiment
 
-## Bring historical data
+```sh
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r requirements-ml.lock.txt
+python -m sportsedge.ingest --years 2023 2024 --historical-lag-days 7 --output data/historical
+python -m sportsedge run --games data/historical/games.csv --ml --min-train 100 --test-from 2024-01-01T00:00:00Z --output runs/historical
+python -m sportsedge serve --report runs/historical/report.json --port 8766
+python -m unittest discover -s tests -v
+```
 
-Export licensed/provider data to the following normalized CSV schemas, then run the same pipeline. Inputs are read-only, hashed with SHA-256, and identified in every report. Keep raw provider responses, provider/version, retrieval times, transformations and licenses alongside your data. Never manufacture historical observation times from a current feed.
+`pip install -e ".[ml]"` is an alternative installation with scikit-learn 1.7.2 and compatible dependency versions. The lock file records the tested environment. To limit CPU use, set `OMP_NUM_THREADS=1` and `OPENBLAS_NUM_THREADS=1` before running.
 
-`games.csv` header:
+The default ingest covers all four leagues. Use `--leagues NHL` to restrict scope. The adapter fetches daily ESPN scoreboards with three concurrent requests and retries; requests are cached by URL with retrieval times and SHA-256 hashes. Cached bytes are verified on reuse. Source manifests record the transformed CSV hash; training rejects mismatches. Keep cached archives for reproducibility because upstream archives can be revised.
+
+### Data sources and scope
+
+- **NBA/NHL:** [ESPN scoreboards](https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates=20240101), one daily query per requested calendar date. Only completed regular-season/playoff events involving recognized clubs are retained. All-Star events and preseason are excluded. Only game identity, venue neutrality, date, teams and final scores are extracted; postgame records, leaders, statistics and market odds are ignored. ESPN's endpoint is unofficial and may change. Club allowlists require maintenance for future expansion/renames; ARI and UTAH currently have separate histories.
+- **NFL:** [nflverse games](https://github.com/nflverse/nfldata/blob/master/data/games.csv), selected by season. A selected season includes its January/February postseason in the following calendar year. No odds, eventual starter/QB fields or weather outcomes are consumed.
+- **MLB:** [Retrosheet annual game logs](https://www.retrosheet.org/gamelogs/index.html), regular-season archives. Suspended games use the completion date in the [documented completion field](https://www.retrosheet.org/gamelogs/glfields.txt) before applying the result delay. Forfeits and protests are excluded. Game numbers preserve doubleheaders. Designated home/away sides are used; neutral-site classification is not available in this initial adapter.
+
+Retrosheet data is used courtesy of Retrosheet. Consult each provider's terms before redistributing its data. Raw archives and normalized datasets are ignored by Git; only code, provenance summaries and aggregate experiment results are published.
+
+### Timing policy: explicit reconstruction
+
+The default ingest, **without** `--historical-lag-days`, uses the actual archive retrieval time as `result_known_at`. It does not pretend results were observed historically, so it cannot provide historical training labels at old cutoffs.
+
+The explicit reconstruction option represents games at a UTC date boundary, places the decision one hour earlier, and makes results available seven days after the game/completion date in the example above. This deliberately excludes same-day and recent results. Date-only boundaries are **not actual tipoff/puck-drop times**. This conservative research assumption cannot certify point-in-time correctness of revised schedules/results. Schedule revisions and data corrections remain unmodeled. Rest is a proxy measured from the last *known-result* game, not a complete schedule-derived rest measure. Do not present these results as live, executable or fully timestamp-verified performance.
+
+## Feature engineering and models
+
+Thirteen fixed features are calculated separately for each league:
+
+- Elo difference (1500 initial rating, K=20, 50-point home advantage, zero at neutral venues).
+- Smoothed last-10 form and scaled/clipped last-10 scoring-margin difference.
+- H2H last-10 win rate, sample count, recency-weighted win rate (365-day half-life) and age of latest meeting.
+- Capped rest difference, weighted absence difference, report-coverage difference, separate home/away report-presence indicators, and neutral venue.
+
+Baselines are a smoothed training-only home prior, Elo, and fixed L2-regularized logistic regression. `--ml` adds histogram gradient boosting (100 iterations, seven leaves, minimum 30 samples/leaf, L2=2, learning rate=.05, seed=42, early stopping disabled) and a logistic ablation with all four direct H2H features zeroed. All settings were fixed before inspecting held-out scores. No test-set tuning or random validation split is used. Stronger model capacity does not guarantee stronger results.
+
+`--test-from` trains each league once using only labels known before the boundary. Weights remain frozen throughout evaluation; features update sequentially as prior game results become available. This represents rolling prediction with frozen weights, not all predictions made on January 1. Without this option, the original expanding-window backtest retrains at each chronological fixture block. The two protocols should not be conflated.
+
+Targets are home wins conditional on a decisive final result. **NHL includes overtime and shootouts**, not regulation-only outcomes. NFL ties are excluded from training/evaluation (and represented as 0.5 for historical form/Elo); the output is not an unconditional three-way moneyline probability.
+
+## Injuries and availability
+
+CSV inputs retain one snapshot per game/team/player/publication/observation. Both timestamps must be strictly before prediction time; the latest eligible publication wins, with observation time breaking ties. Reports older than 72 hours are treated as unknown. Explicit `available` updates supersede older `out` statuses. Coverage indicators distinguish missing reports from known availability; they indicate any report, not full-roster coverage.
+
+Supported heuristic severity factors: available=0, probable=.25, questionable=.5, doubtful=.75, out=1. These are not calibrated probabilities. Player importance is a finite weight in [0,1] that must have been known at report time. Never derive historical weights or availability from eventual starters, participation, season-end statistics or today's injury list.
+
+To begin collecting genuine snapshots, normalize permitted provider reports into a JSON list containing `game_id`, `team`, `player_id`, `published_at`, `status`, and `weight`, then:
+
+```sh
+python -m sportsedge.availability --input incoming.json --games data/mydata/games.csv --output data/mydata/availability.csv
+```
+
+The command records the actual current `observed_at`, ignores any observation time supplied by the input, validates all rows before replacing the CSV, and preserves input payloads with hashes under `availability_raw/`. It is a single-writer import command, not a scheduled provider integration. The real-data experiment has **0% injury coverage**, so no injury benefit is claimed. A licensed timestamped archive or prospective collection is needed to evaluate that benefit.
+
+## Normalized CSV schemas
 
 ```csv
 game_id,league,home,away,start_at,prediction_at,result_known_at,home_score,away_score,neutral
-example-1,NBA,TEAM-A,TEAM-B,2024-01-01T20:00:00Z,2024-01-01T19:00:00Z,2024-01-02T01:00:00Z,102,99,0
+example-1,NHL,BOS,NYR,2024-01-01T20:00:00Z,2024-01-01T19:00:00Z,2024-01-02T01:00:00Z,3,2,0
 ```
 
-- Unique, stable game IDs; league is NBA, NFL, or MLB. Stable team identifiers must be consistent across files.
-- All times must carry timezone offsets. `prediction_at` must precede `start_at`. Use the actual intended decision time, not a retrospective convenient time.
-- `result_known_at` is when the final result became available to your system, after the start. Using a scheduled end time can leak delayed games.
-- For upcoming games, leave both scores and result time blank. With sufficient past training games, their predictions appear in `upcoming` in the JSON report.
-- Scores are nonnegative integers. `neutral` is 0 or 1. Ties are omitted from training/evaluation; the target is **home win conditional on a decisive result**, including for NFL. This is not an unconditional NFL moneyline probability.
-
-`availability.csv` header:
+IDs must be unique, team IDs stable, timestamps offset-aware, scores nonnegative integers, and neutral 0/1. Prediction must precede the start; result availability must follow it. Upcoming fixtures leave both scores and result time blank. Their predictions appear under `upcoming` when enough past training data exists. Historical adapters currently import completed games only.
 
 ```csv
 game_id,team,player_id,published_at,observed_at,status,weight
-example-1,TEAM-A,player-7,2024-01-01T15:00:00Z,2024-01-01T15:05:00Z,out,0.5
+example-1,BOS,player-7,2024-01-01T15:00:00Z,2024-01-01T15:05:00Z,out,0.5
 ```
 
-- Snapshots are specific to a game/team/player, never silently carried across fixtures.
-- Both publication and observation times must be strictly before the prediction cutoff. Late-ingested backdated reports are excluded. Exact-cutoff timestamps are conservatively excluded.
-- Latest eligible publication wins per player; later observation breaks publication-time ties. Duplicate snapshot keys are rejected. Explicit `available` updates supersede older `out` reports.
-- Supported status factors: available 0, probable .25, questionable .5, doubtful .75, out 1. These are fixed heuristic severity weights, not calibrated probabilities of missing a game.
-- `weight` is a finite number in [0,1] representing prespecified player importance. It must have been known at snapshot time. Do not use end-of-season minutes, retrospectively estimated player value, or eventual participation.
-- Missing availability is unknown, not confirmed health. A coverage-difference feature indicates whether any eligible snapshot was present for each team; this is coarse report coverage, not complete roster coverage. Include explicit available reports where possible.
+Run your own verified data with `--games ... --availability ... --data-kind historical`. The data-kind flag does not certify provenance; ingestion manifest classification takes precedence when present.
 
-```sh
-python -m sportsedge run --games data/historical/games.csv --availability data/historical/availability.csv --data-kind historical --min-train 100 --batch-size 30 --output runs/historical
-```
+## Outputs and API
 
-The historical label is supplied by the operator and does not certify provenance. Omit `--availability` if historical snapshots are unavailable. No injury history is fabricated by the pipeline.
+- `report.json`: metrics, five-bin calibration, prediction rows, model coefficients, fold cutoffs, data hashes, runtime versions, coverage and timing policy.
+- `features.csv` and `predictions.csv`: reproducible research artifacts.
+- `<LEAGUE>-logistic.json`: feature order, coefficients and training provenance.
+- `models/<LEAGUE>-gradient-boosting.joblib`: last trained fold's model and provenance. These are evaluation models, not models refit on the held-out set. Load only your own trusted joblib artifacts.
+- `GET /api/health` and `GET /api/report`: local read-only API.
 
-## Models and leakage controls
+See [VALIDATION.md](VALIDATION.md) and [experiments/historical-summary.json](experiments/historical-summary.json) for the measured run. The first run is a benchmark, not a final untouched test for subsequent model selection. Reserve later data before future tuning. No market odds, transaction costs, uncertainty estimates, or betting returns are evaluated.
 
-Each league has separate training, ratings, and histories:
+## Tests and limitations
 
-1. **Home prior:** smoothed training-only home-win rate.
-2. **Elo:** 1500 initial ratings, K=20, fixed 50-point home advantage (zero at neutral venues); ties update ratings as 0.5.
-3. **Logistic:** fixed L2-regularized batch gradient descent, using Elo difference, smoothed last-10 form, smoothed last-10 H2H oriented toward the current home team, capped rest difference, weighted absence difference, availability coverage difference, and neutral venue.
+Tests exercise future-result exclusion, late and stale reports, H2H direction, league isolation, exact-cutoff embargoes, snapshot observation times, suspended MLB completion, All-Star filtering, NHL support, frozen training, deterministic reports, schema validation and saved model artifacts. GitHub Actions tests core and ML configurations.
 
-Features use only results known strictly before each row's cutoff, ordered by result availability then game ID. Logistic training uses each historical game's original prediction-time feature vector. There is no whole-dataset scaling or random train/test split.
-
-Fold boundaries are chronological blocks of all fixtures, independent of outcomes. At each block's earliest cutoff, training labels must already be known. Model weights stay fixed for that block; history features can update between predictions as new results become known. This represents sequential deployment, not a batch of predictions all made at the fold start. Minimum training count defaults to 20; cold-start blocks are skipped. No hyperparameter search is performed.
-
-Reports include accuracy, Brier score, log loss, five-bin calibration, held-out predictions and training cutoff audits. Do not select a model based on this demo. For real research, use multiple seasons, larger training windows, a final untouched season, and uncertainty estimates before drawing conclusions.
-
-Timestamp gating cannot repair incorrectly sourced timestamps or retrospectively revised input. The initial schema holds one final result per game and does not model result revisions, schedule/roster revisions, or a bitemporal warehouse. Team renames, season resets, starting pitchers/QBs, detailed lineup strength, market odds and travel are future extensions. The simple point-in-time feature builder scans history for each row; it prioritizes auditability over large-dataset speed.
-
-## Reproducibility and tests
-
-The synthetic generator uses a local seeded random generator; the pipeline is deterministic and writes `report.json`, `features.csv`, and (when nonempty) `predictions.csv`. Rerunning with the same inputs/configuration yields identical output on the same Python runtime. Generated data/runs are ignored by Git. Keep Python version and code commit with your experiment records.
-
-Tests cover late result exclusion, publication/observation cutoffs, availability revisions, H2H direction, league isolation, timezone validation, duplicate IDs, metric values, deterministic output, fold embargoes and future-label perturbations. GitHub Actions runs tests and a demo on Python 3.11–3.13.
-
-## Repository layout
-
-- `sportsedge/core.py`: schema checks, features and models.
-- `sportsedge/pipeline.py`: reproducible demo and walk-forward evaluation.
-- `sportsedge/cli.py`: command line, local API and dashboard server.
-- `sportsedge/dashboard.html`: league filter, metrics and prediction review.
-- `tests/`: leakage and pipeline regression tests.
-
-No source data or secrets should be committed. Provider ingestion adapters and real-data evaluation are the next steps; this draft already supports their normalized CSV outputs.
+Feature construction rescans prior games and prioritizes auditability over scale. There is no season reset, roster revision model, dedicated goalie/pitcher/QB feature, full lineup coverage, live data service or automatic retraining schedule. New seasons, current injury feeds and later untouched evaluation windows remain future work.

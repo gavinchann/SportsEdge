@@ -88,8 +88,8 @@ class SportsEdgeTests(unittest.TestCase):
                 row["home_score"] = row["away_score"] = row["result_known_at"] = ""
         write_csv(path, fields, rows)
         report = run(path, None, self.root / "out")
-        self.assertEqual(report["ties_excluded"], 3)
-        self.assertEqual(len(report["upcoming"]), 9)
+        self.assertEqual(report["ties_excluded"], 4)
+        self.assertEqual(len(report["upcoming"]), 12)
         self.assertTrue(all(r["actual"] is None for r in report["upcoming"]))
         self.assertTrue(all(m["n"] == 18 for league in report["summary"].values() for m in league.values()))
 
@@ -106,7 +106,7 @@ class SportsEdgeTests(unittest.TestCase):
         self.assertEqual((self.root / "a/report.json").read_bytes(), (self.root / "b/report.json").read_bytes())
         for fold in report["folds"]:
             self.assertLess(stamp(fold["latest_training_result"]), stamp(fold["trained_before"]))
-        for league in ("NBA", "NFL", "MLB"):
+        for league in ("NBA", "NFL", "MLB", "NHL"):
             self.assertEqual(report["summary"][league]["logistic"]["n"], 20)
         self.assertTrue(all(0 < r["probability"] < 1 for r in report["predictions"]))
 

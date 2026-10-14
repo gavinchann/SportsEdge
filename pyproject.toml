@@ -4,10 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sportsedge"
-version = "0.1.0"
-description = "Time-aware NBA, NFL and MLB outcome prediction research starter"
+version = "0.2.0"
+description = "Time-aware NBA, NFL, MLB and NHL outcome prediction research"
 requires-python = ">=3.11"
 dependencies = []
+
+[project.optional-dependencies]
+ml = ["scikit-learn==1.7.2"]
 
 [project.scripts]
 sportsedge = "sportsedge.cli:main"

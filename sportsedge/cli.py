@@ -51,6 +51,8 @@ def main():
     r.add_argument("--min-train", type=int, default=20)
     r.add_argument("--batch-size", type=int, default=20)
     r.add_argument("--data-kind", choices=["synthetic", "historical", "unverified"], default="unverified")
+    r.add_argument("--ml", action="store_true", help="Include gradient boosting and H2H ablation (install ML extras)")
+    r.add_argument("--test-from", help="Freeze training before an offset-aware timestamp; evaluate subsequent games")
     s = sub.add_parser("serve", help="Serve a report and dashboard on loopback only")
     s.add_argument("--report", default="runs/latest/report.json")
     s.add_argument("--port", type=int, default=8765)
@@ -59,7 +61,7 @@ def main():
         demo(args.output, args.seed, args.count)
         print(f"Synthetic inputs written to {args.output}")
     elif args.command == "run":
-        report = run(args.games, args.availability, args.output, args.min_train, args.batch_size, args.data_kind)
+        report = run(args.games, args.availability, args.output, args.min_train, args.batch_size, args.data_kind, args.ml, args.test_from)
         print(json.dumps({"data_kind": report["data_kind"], "summary": report["summary"]}, indent=2))
     else:
         serve(args.report, args.port)

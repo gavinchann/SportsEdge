@@ -3,8 +3,9 @@ import csv
 import math
 from datetime import datetime
 
-LEAGUES = {"NBA", "NFL", "MLB"}
-FEATURES = ["elo_diff", "form_diff", "h2h", "rest_diff", "absence_diff", "coverage_diff", "neutral"]
+LEAGUES = {"NBA", "NFL", "MLB", "NHL"}
+FEATURES = ["elo_diff", "form_diff", "h2h", "rest_diff", "absence_diff", "coverage_diff", "neutral",
+            "h2h_count", "h2h_recency", "h2h_age", "margin_diff", "home_coverage", "away_coverage"]
 STATUS = {"available": 0.0, "probable": 0.25, "questionable": 0.5, "doubtful": 0.75, "out": 1.0}
 
 
@@ -76,10 +77,10 @@ def sigmoid(x):
     return 1 / (1 + math.exp(-max(-35, min(35, x))))
 
 
-def features(target, games, availability):
+def features(target, games, availability, max_availability_age_hours=72):
     cutoff = target["prediction_at"]
     history = sorted((g for g in games if g["league"] == target["league"] and g["result_known_at"] and g["result_known_at"] < cutoff), key=lambda g: (g["result_known_at"], g["game_id"]))
-    ratings, records, last, meetings = {}, {}, {}, []
+    ratings, records, last, meetings, margins = {}, {}, {}, [], {}
     home, away = target["home"], target["away"]
     for g in history:
         h, a = g["home"], g["away"]
@@ -89,10 +90,14 @@ def features(target, games, availability):
         ratings[h], ratings[a] = rh + 20 * (y - expected), ra - 20 * (y - expected)
         records.setdefault(h, []).append(y)
         records.setdefault(a, []).append(1 - y)
+        scale = {"NBA": 20, "NFL": 14, "MLB": 5, "NHL": 3}[g["league"]]
+        margin = max(-2, min(2, (g["home_score"] - g["away_score"]) / scale))
+        margins.setdefault(h, []).append(margin)
+        margins.setdefault(a, []).append(-margin)
         for team in (h, a):
             last[team] = max(last.get(team, g["start_at"]), g["start_at"])
         if {h, a} == {home, away}:
-            meetings.append(y if h == home else 1 - y)
+            meetings.append((y if h == home else 1 - y, g["start_at"]))
     def form(team):
         r = records.get(team, [])[-10:]
         return (sum(r) + 2) / (len(r) + 4)
@@ -100,7 +105,7 @@ def features(target, games, availability):
         return min(14, max(0, (target["start_at"] - last[team]).total_seconds() / 86400)) if team in last else 14
     latest = {}
     for r in availability:
-        if r["game_id"] == target["game_id"] and r["published_at"] < cutoff and r["observed_at"] < cutoff:
+        if r["game_id"] == target["game_id"] and r["published_at"] < cutoff and r["observed_at"] < cutoff and (cutoff - r["published_at"]).total_seconds() <= max_availability_age_hours * 3600:
             key = (r["team"], r["player_id"])
             if key not in latest or (r["published_at"], r["observed_at"]) > (latest[key]["published_at"], latest[key]["observed_at"]):
                 latest[key] = r
@@ -109,16 +114,39 @@ def features(target, games, availability):
     def coverage(team):
         return int(any(t == team for t, _ in latest))
     h2h = meetings[-10:]
+    ages = [(cutoff - date).total_seconds() / 86400 for _, date in h2h]
+    weights = [0.5 ** (age / 365) for age in ages]
+    def margin_form(team):
+        values = margins.get(team, [])[-10:]
+        return sum(values) / (len(values) + 4)
     return [(ratings.get(home, 1500) - ratings.get(away, 1500)) / 400,
-            form(home) - form(away), (sum(h2h) + 2) / (len(h2h) + 4) - 0.5,
+            form(home) - form(away), (sum(y for y, _ in h2h) + 2) / (len(h2h) + 4) - 0.5,
             (rest(home) - rest(away)) / 14, absence(away) - absence(home),
-            coverage(home) - coverage(away), target["neutral"]]
+            coverage(home) - coverage(away), target["neutral"], len(h2h) / 10,
+            (sum(y * w for (y, _), w in zip(h2h, weights)) + 2) / (sum(weights) + 4) - 0.5,
+            min(min(ages), 730) / 730 if ages else 1,
+            margin_form(home) - margin_form(away), coverage(home), coverage(away)]
 
 
 class Logistic:
     def fit(self, rows):
         # Fixed hyperparameters; no test-fold tuning or whole-dataset scaling.
         self.weights = [0.0] * (len(FEATURES) + 1)
+        try:
+            import numpy as np
+        except ImportError:
+            np = None
+        if np is not None:
+            x = np.array([[1.0] + list(x) for x, _ in rows])
+            y = np.array([y for _, y in rows])
+            w = np.zeros(x.shape[1])
+            for _ in range(250):
+                error = 1 / (1 + np.exp(-np.clip(x @ w, -35, 35))) - y
+                penalty = 0.01 * w
+                penalty[0] = 0
+                w -= 0.15 * (x.T @ error / len(y) + penalty)
+            self.weights = w.tolist()
+            return self
         for _ in range(250):
             grad = [0.0] * len(self.weights)
             for x, y in rows:

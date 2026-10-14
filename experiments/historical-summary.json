@@ -1,0 +1,776 @@
+{
+  "schema_version": 2,
+  "data_kind": "historical_reconstructed",
+  "warning": "Real archived results. Date-boundary predictions; final results delayed from completion date by specified lag. This is an assumption, not historical observation evidence. Injury coverage is reported separately. No betting profitability or live performance established.",
+  "config": {
+    "min_train": 100,
+    "batch_size": 20,
+    "features": [
+      "elo_diff",
+      "form_diff",
+      "h2h",
+      "rest_diff",
+      "absence_diff",
+      "coverage_diff",
+      "neutral",
+      "h2h_count",
+      "h2h_recency",
+      "h2h_age",
+      "margin_diff",
+      "home_coverage",
+      "away_coverage"
+    ],
+    "seed": 42,
+    "target": "home win conditional on a decisive result",
+    "ml": true,
+    "test_from": "2024-01-01T00:00:00Z",
+    "evaluation": "frozen_weights_sequential_features",
+    "gradient_boosting": {
+      "max_iter": 100,
+      "max_leaf_nodes": 7,
+      "min_samples_leaf": 30,
+      "l2_regularization": 2,
+      "learning_rate": 0.05,
+      "early_stopping": false,
+      "random_state": 42
+    },
+    "availability_max_age_hours": 72
+  },
+  "source_sha256": {
+    "games": "16bbd82f2b0b1e2103ae07b7e1e26dfbb708ae14844a421fec25b1d3390bb7fc"
+  },
+  "source": {
+    "kind": "historical_reconstructed",
+    "years": [
+      2023,
+      2024
+    ],
+    "counts": {
+      "NBA": 2566,
+      "NFL": 570,
+      "MLB": 4859,
+      "NHL": 2816
+    },
+    "result_lag_days": 7,
+    "timing_policy": "Date-boundary predictions; final results delayed from completion date by specified lag. This is an assumption, not historical observation evidence.",
+    "availability": "Not supplied; unknown, never inferred from final rosters or participation."
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "sportsedge": "0.2.0",
+    "sklearn": "1.7.2",
+    "numpy": "2.5.4"
+  },
+  "games": 10811,
+  "availability_rows": 0,
+  "availability_coverage": {
+    "MLB": {
+      "games": 4859,
+      "home_reported": 0,
+      "away_reported": 0
+    },
+    "NBA": {
+      "games": 2566,
+      "home_reported": 0,
+      "away_reported": 0
+    },
+    "NFL": {
+      "games": 570,
+      "home_reported": 0,
+      "away_reported": 0
+    },
+    "NHL": {
+      "games": 2816,
+      "home_reported": 0,
+      "away_reported": 0
+    }
+  },
+  "ties_excluded": 0,
+  "summary": {
+    "MLB": {
+      "home_prior": {
+        "n": 2429,
+        "accuracy": 0.521613832853026,
+        "brier": 0.2495332562420108,
+        "log_loss": 0.6922134033336279,
+        "calibration": [
+          {
+            "lower": 0.4,
+            "n": 2429,
+            "predicted": 0.5209703947368421,
+            "observed": 0.521613832853026
+          }
+        ]
+      },
+      "elo": {
+        "n": 2429,
+        "accuracy": 0.5471387402223137,
+        "brier": 0.2487593207787056,
+        "log_loss": 0.6916147604998577,
+        "calibration": [
+          {
+            "lower": 0.0,
+            "n": 1,
+            "predicted": 0.1999736105296128,
+            "observed": 0.0
+          },
+          {
+            "lower": 0.2,
+            "n": 226,
+            "predicted": 0.34424265987739194,
+            "observed": 0.39823008849557523
+          },
+          {
+            "lower": 0.4,
+            "n": 1195,
+            "predicted": 0.5193913331605786,
+            "observed": 0.49539748953974894
+          },
+          {
+            "lower": 0.6,
+            "n": 964,
+            "predicted": 0.6720815389547891,
+            "observed": 0.5757261410788381
+          },
+          {
+            "lower": 0.8,
+            "n": 43,
+            "predicted": 0.840487853562216,
+            "observed": 0.6976744186046512
+          }
+        ]
+      },
+      "logistic": {
+        "n": 2429,
+        "accuracy": 0.5508439687114038,
+        "brier": 0.2453692738331824,
+        "log_loss": 0.6838046223618283,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 6,
+            "predicted": 0.3887956391945635,
+            "observed": 0.16666666666666666
+          },
+          {
+            "lower": 0.4,
+            "n": 2351,
+            "predicted": 0.5173613151010986,
+            "observed": 0.5168013611229264
+          },
+          {
+            "lower": 0.6,
+            "n": 72,
+            "predicted": 0.6155452490386265,
+            "observed": 0.7083333333333334
+          }
+        ]
+      },
+      "gradient_boosting": {
+        "n": 2429,
+        "accuracy": 0.5496088925483739,
+        "brier": 0.2507153850075954,
+        "log_loss": 0.695347441974767,
+        "calibration": [
+          {
+            "lower": 0.0,
+            "n": 4,
+            "predicted": 0.17600199474723444,
+            "observed": 0.5
+          },
+          {
+            "lower": 0.2,
+            "n": 263,
+            "predicted": 0.32364458927536527,
+            "observed": 0.4296577946768061
+          },
+          {
+            "lower": 0.4,
+            "n": 1392,
+            "predicted": 0.5194517191206117,
+            "observed": 0.5021551724137931
+          },
+          {
+            "lower": 0.6,
+            "n": 770,
+            "predicted": 0.6565561929169437,
+            "observed": 0.5883116883116883
+          }
+        ]
+      },
+      "logistic_no_h2h": {
+        "n": 2429,
+        "accuracy": 0.5529024289831206,
+        "brier": 0.24550477812925342,
+        "log_loss": 0.6840794090240843,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 4,
+            "predicted": 0.38622901280051847,
+            "observed": 0.25
+          },
+          {
+            "lower": 0.4,
+            "n": 2356,
+            "predicted": 0.5175705956887862,
+            "observed": 0.516553480475382
+          },
+          {
+            "lower": 0.6,
+            "n": 69,
+            "predicted": 0.614741102548423,
+            "observed": 0.7101449275362319
+          }
+        ]
+      }
+    },
+    "NBA": {
+      "home_prior": {
+        "n": 1316,
+        "accuracy": 0.5364741641337386,
+        "brier": 0.24955295378413173,
+        "log_loss": 0.6922737727048457,
+        "calibration": [
+          {
+            "lower": 0.4,
+            "n": 1316,
+            "predicted": 0.5661948376353039,
+            "observed": 0.5364741641337386
+          }
+        ]
+      },
+      "elo": {
+        "n": 1316,
+        "accuracy": 0.6428571428571429,
+        "brier": 0.2186286905671328,
+        "log_loss": 0.626024304032797,
+        "calibration": [
+          {
+            "lower": 0.0,
+            "n": 52,
+            "predicted": 0.15042197579455163,
+            "observed": 0.1346153846153846
+          },
+          {
+            "lower": 0.2,
+            "n": 245,
+            "predicted": 0.30467575731881985,
+            "observed": 0.30612244897959184
+          },
+          {
+            "lower": 0.4,
+            "n": 429,
+            "predicted": 0.5122151222612097,
+            "observed": 0.5058275058275058
+          },
+          {
+            "lower": 0.6,
+            "n": 435,
+            "predicted": 0.6937497664516943,
+            "observed": 0.639080459770115
+          },
+          {
+            "lower": 0.8,
+            "n": 155,
+            "predicted": 0.8588000405969874,
+            "observed": 0.832258064516129
+          }
+        ]
+      },
+      "logistic": {
+        "n": 1316,
+        "accuracy": 0.6436170212765957,
+        "brier": 0.21922928910391895,
+        "log_loss": 0.6283759144090305,
+        "calibration": [
+          {
+            "lower": 0.0,
+            "n": 1,
+            "predicted": 0.1877381110576566,
+            "observed": 0.0
+          },
+          {
+            "lower": 0.2,
+            "n": 147,
+            "predicted": 0.34693136893231286,
+            "observed": 0.23129251700680273
+          },
+          {
+            "lower": 0.4,
+            "n": 617,
+            "predicted": 0.5137712962835381,
+            "observed": 0.4586709886547812
+          },
+          {
+            "lower": 0.6,
+            "n": 528,
+            "predicted": 0.6780610033058933,
+            "observed": 0.6988636363636364
+          },
+          {
+            "lower": 0.8,
+            "n": 23,
+            "predicted": 0.8301121741358305,
+            "observed": 0.8695652173913043
+          }
+        ]
+      },
+      "gradient_boosting": {
+        "n": 1316,
+        "accuracy": 0.6458966565349544,
+        "brier": 0.22442274719702798,
+        "log_loss": 0.642463391596457,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 351,
+            "predicted": 0.30996303719788204,
+            "observed": 0.32193732193732194
+          },
+          {
+            "lower": 0.4,
+            "n": 392,
+            "predicted": 0.5116547024112182,
+            "observed": 0.5102040816326531
+          },
+          {
+            "lower": 0.6,
+            "n": 350,
+            "predicted": 0.7056742689164297,
+            "observed": 0.6257142857142857
+          },
+          {
+            "lower": 0.8,
+            "n": 223,
+            "predicted": 0.8594504904586584,
+            "observed": 0.7802690582959642
+          }
+        ]
+      },
+      "logistic_no_h2h": {
+        "n": 1316,
+        "accuracy": 0.6458966565349544,
+        "brier": 0.21908206136805636,
+        "log_loss": 0.6281591867651346,
+        "calibration": [
+          {
+            "lower": 0.0,
+            "n": 1,
+            "predicted": 0.1869657643687283,
+            "observed": 0.0
+          },
+          {
+            "lower": 0.2,
+            "n": 152,
+            "predicted": 0.34869243659233223,
+            "observed": 0.21710526315789475
+          },
+          {
+            "lower": 0.4,
+            "n": 628,
+            "predicted": 0.5134825691019009,
+            "observed": 0.46178343949044587
+          },
+          {
+            "lower": 0.6,
+            "n": 516,
+            "predicted": 0.6759948279792569,
+            "observed": 0.7093023255813954
+          },
+          {
+            "lower": 0.8,
+            "n": 19,
+            "predicted": 0.8290845658779133,
+            "observed": 0.8947368421052632
+          }
+        ]
+      }
+    },
+    "NFL": {
+      "home_prior": {
+        "n": 314,
+        "accuracy": 0.5509554140127388,
+        "brier": 0.2474979083958213,
+        "log_loss": 0.6881364985438723,
+        "calibration": [
+          {
+            "lower": 0.4,
+            "n": 314,
+            "predicted": 0.5606694560669456,
+            "observed": 0.5509554140127388
+          }
+        ]
+      },
+      "elo": {
+        "n": 314,
+        "accuracy": 0.6369426751592356,
+        "brier": 0.2242991785389832,
+        "log_loss": 0.6395024534249609,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 18,
+            "predicted": 0.3551677010771829,
+            "observed": 0.2222222222222222
+          },
+          {
+            "lower": 0.4,
+            "n": 170,
+            "predicted": 0.5136850004856284,
+            "observed": 0.4588235294117647
+          },
+          {
+            "lower": 0.6,
+            "n": 123,
+            "predicted": 0.6680280670294544,
+            "observed": 0.7154471544715447
+          },
+          {
+            "lower": 0.8,
+            "n": 3,
+            "predicted": 0.815689392206906,
+            "observed": 1.0
+          }
+        ]
+      },
+      "logistic": {
+        "n": 314,
+        "accuracy": 0.6019108280254777,
+        "brier": 0.23215204401092632,
+        "log_loss": 0.6564651785079894,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 2,
+            "predicted": 0.37714406051103844,
+            "observed": 0.5
+          },
+          {
+            "lower": 0.4,
+            "n": 214,
+            "predicted": 0.5225423158976235,
+            "observed": 0.4719626168224299
+          },
+          {
+            "lower": 0.6,
+            "n": 98,
+            "predicted": 0.6463277223918895,
+            "observed": 0.7244897959183674
+          }
+        ]
+      },
+      "gradient_boosting": {
+        "n": 314,
+        "accuracy": 0.6273885350318471,
+        "brier": 0.22921375218919035,
+        "log_loss": 0.6490469585567585,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 70,
+            "predicted": 0.3356282788165445,
+            "observed": 0.38571428571428573
+          },
+          {
+            "lower": 0.4,
+            "n": 118,
+            "predicted": 0.4940313384122217,
+            "observed": 0.5
+          },
+          {
+            "lower": 0.6,
+            "n": 86,
+            "predicted": 0.669417760839004,
+            "observed": 0.627906976744186
+          },
+          {
+            "lower": 0.8,
+            "n": 40,
+            "predicted": 0.8411167209539483,
+            "observed": 0.825
+          }
+        ]
+      },
+      "logistic_no_h2h": {
+        "n": 314,
+        "accuracy": 0.5987261146496815,
+        "brier": 0.23225441458513424,
+        "log_loss": 0.6566657063937024,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 2,
+            "predicted": 0.37810946401364104,
+            "observed": 0.5
+          },
+          {
+            "lower": 0.4,
+            "n": 212,
+            "predicted": 0.5231203191885424,
+            "observed": 0.4669811320754717
+          },
+          {
+            "lower": 0.6,
+            "n": 100,
+            "predicted": 0.6463598606086629,
+            "observed": 0.73
+          }
+        ]
+      }
+    },
+    "NHL": {
+      "home_prior": {
+        "n": 1427,
+        "accuracy": 0.5353889278206027,
+        "brier": 0.24882853157793372,
+        "log_loss": 0.6908027123398314,
+        "calibration": [
+          {
+            "lower": 0.4,
+            "n": 1427,
+            "predicted": 0.5263940520446097,
+            "observed": 0.5353889278206027
+          }
+        ]
+      },
+      "elo": {
+        "n": 1427,
+        "accuracy": 0.5921513665031535,
+        "brier": 0.23940413430824087,
+        "log_loss": 0.6722644650850927,
+        "calibration": [
+          {
+            "lower": 0.0,
+            "n": 3,
+            "predicted": 0.19205448655890198,
+            "observed": 0.3333333333333333
+          },
+          {
+            "lower": 0.2,
+            "n": 195,
+            "predicted": 0.33256113764271583,
+            "observed": 0.3487179487179487
+          },
+          {
+            "lower": 0.4,
+            "n": 613,
+            "predicted": 0.5147372983134171,
+            "observed": 0.4926590538336052
+          },
+          {
+            "lower": 0.6,
+            "n": 557,
+            "predicted": 0.6864510954911404,
+            "observed": 0.6211849192100538
+          },
+          {
+            "lower": 0.8,
+            "n": 59,
+            "predicted": 0.8381474791904205,
+            "observed": 0.7966101694915254
+          }
+        ]
+      },
+      "logistic": {
+        "n": 1427,
+        "accuracy": 0.5732305536089699,
+        "brier": 0.24221007305649386,
+        "log_loss": 0.6773730606152627,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 23,
+            "predicted": 0.38356969108144845,
+            "observed": 0.34782608695652173
+          },
+          {
+            "lower": 0.4,
+            "n": 1286,
+            "predicted": 0.5138566640040411,
+            "observed": 0.52099533437014
+          },
+          {
+            "lower": 0.6,
+            "n": 118,
+            "predicted": 0.6246179823043013,
+            "observed": 0.7288135593220338
+          }
+        ]
+      },
+      "gradient_boosting": {
+        "n": 1427,
+        "accuracy": 0.5795374912403644,
+        "brier": 0.24273629471486655,
+        "log_loss": 0.6792628620109866,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 177,
+            "predicted": 0.3505234255775717,
+            "observed": 0.3785310734463277
+          },
+          {
+            "lower": 0.4,
+            "n": 792,
+            "predicted": 0.5008619826599123,
+            "observed": 0.5075757575757576
+          },
+          {
+            "lower": 0.6,
+            "n": 403,
+            "predicted": 0.6767536721018403,
+            "observed": 0.6352357320099256
+          },
+          {
+            "lower": 0.8,
+            "n": 55,
+            "predicted": 0.8328466990687231,
+            "observed": 0.7090909090909091
+          }
+        ]
+      },
+      "logistic_no_h2h": {
+        "n": 1427,
+        "accuracy": 0.5732305536089699,
+        "brier": 0.24200728598343438,
+        "log_loss": 0.6769414330847284,
+        "calibration": [
+          {
+            "lower": 0.2,
+            "n": 15,
+            "predicted": 0.38860931658375597,
+            "observed": 0.4
+          },
+          {
+            "lower": 0.4,
+            "n": 1261,
+            "predicted": 0.5190489135077461,
+            "observed": 0.5138778747026169
+          },
+          {
+            "lower": 0.6,
+            "n": 151,
+            "predicted": 0.6243227545372358,
+            "observed": 0.7284768211920529
+          }
+        ]
+      }
+    }
+  },
+  "folds": [
+    {
+      "fold": "MLB-0",
+      "league": "MLB",
+      "trained_before": "2024-01-01T00:00:00+00:00",
+      "training_n": 2430,
+      "latest_training_result": "2023-10-08T00:00:00+00:00",
+      "weights": {
+        "intercept": 0.07284523658304251,
+        "elo_diff": 0.30150429325470574,
+        "form_diff": 0.15445035552881456,
+        "h2h": 0.05331936333403412,
+        "rest_diff": 0.006121739896821428,
+        "absence_diff": 0.0,
+        "coverage_diff": 0.0,
+        "neutral": 0.0,
+        "h2h_count": 0.005998086452068599,
+        "h2h_recency": 0.04967242483946501,
+        "h2h_age": 0.009756407003342963,
+        "margin_diff": 0.3238496627124928,
+        "home_coverage": 0.0,
+        "away_coverage": 0.0
+      }
+    },
+    {
+      "fold": "NBA-0",
+      "league": "NBA",
+      "trained_before": "2024-01-01T00:00:00+00:00",
+      "training_n": 1199,
+      "latest_training_result": "2023-12-31T00:00:00+00:00",
+      "weights": {
+        "intercept": 0.2643574925819094,
+        "elo_diff": 0.6777039221114434,
+        "form_diff": 0.3443063746309275,
+        "h2h": 0.10273322098885197,
+        "rest_diff": -0.05544658440993111,
+        "absence_diff": 0.0,
+        "coverage_diff": 0.0,
+        "neutral": -0.016274007499545405,
+        "h2h_count": 0.06311886319664847,
+        "h2h_recency": 0.09087295048854299,
+        "h2h_age": -0.0017971603008298204,
+        "margin_diff": 0.5870686580609383,
+        "home_coverage": 0.0,
+        "away_coverage": 0.0
+      }
+    },
+    {
+      "fold": "NFL-0",
+      "league": "NFL",
+      "trained_before": "2024-01-01T00:00:00+00:00",
+      "training_n": 237,
+      "latest_training_result": "2023-12-31T00:00:00+00:00",
+      "weights": {
+        "intercept": 0.23915804053691736,
+        "elo_diff": 0.08546863610676153,
+        "form_diff": 0.12056331228586095,
+        "h2h": 0.00022390677551374947,
+        "rest_diff": 0.09657842512993688,
+        "absence_diff": 0.0,
+        "coverage_diff": 0.0,
+        "neutral": -0.09494919002941478,
+        "h2h_count": 0.02021329453000105,
+        "h2h_recency": 0.0008852258709938503,
+        "h2h_age": -0.005585021452096008,
+        "margin_diff": 0.6569451772071121,
+        "home_coverage": 0.0,
+        "away_coverage": 0.0
+      }
+    },
+    {
+      "fold": "NHL-0",
+      "league": "NHL",
+      "trained_before": "2024-01-01T00:00:00+00:00",
+      "training_n": 1343,
+      "latest_training_result": "2023-12-31T00:00:00+00:00",
+      "weights": {
+        "intercept": 0.065544985100808,
+        "elo_diff": 0.3649988045262491,
+        "form_diff": 0.1948351695872531,
+        "h2h": 0.049938300648584885,
+        "rest_diff": 0.0238092174436495,
+        "absence_diff": 0.0,
+        "coverage_diff": 0.0,
+        "neutral": 0.00845256730222437,
+        "h2h_count": -0.02278839351192063,
+        "h2h_recency": 0.03589091872157505,
+        "h2h_age": 0.0983291598469544,
+        "margin_diff": 0.3584240770504582,
+        "home_coverage": 0.0,
+        "away_coverage": 0.0
+      }
+    }
+  ],
+  "date_ranges": {
+    "MLB": {
+      "first": "2023-03-30T00:00:00+00:00",
+      "last": "2024-09-30T00:00:00+00:00"
+    },
+    "NBA": {
+      "first": "2023-01-02T00:00:00+00:00",
+      "last": "2025-01-01T00:00:00+00:00"
+    },
+    "NFL": {
+      "first": "2023-09-07T00:00:00+00:00",
+      "last": "2025-02-09T00:00:00+00:00"
+    },
+    "NHL": {
+      "first": "2023-01-01T00:00:00+00:00",
+      "last": "2025-01-01T00:00:00+00:00"
+    }
+  },
+  "full_report_sha256": "cd54a3f78bc093f2c1df358ff243a10f2326929f498a074552f16e0e9063d6a3",
+  "unique_evaluated_games": 5486,
+  "evaluated_prediction_rows": 27430
+}
