@@ -1,4 +1,31 @@
-# Validation — October 14, 2026
+# Validation — October 16, 2026
+
+## Prospective forecasting and dashboard update
+
+- 31 tests pass with ML dependencies; core-only validation passes with four optional ML tests skipped. New coverage includes current schedule filtering, observation-time embargoes, source identity mapping, replay integrity, chronological probability calibration, earliest-forecast scoring, retained final observations, and HTTP assets/API behavior.
+- JavaScript syntax validation passes. Desktop and 390px mobile layouts were exercised in the browser; a mobile navigation overflow was found and corrected. Date filtering, matchup model comparison and historical evaluation navigation work.
+- The 0.3.0 wheel builds and includes the HTML, CSS and JavaScript dashboard assets.
+- A 730-day current-source refresh retrieved 2,952 daily scoreboards and 9,770 recent completed results beyond the original archive. The resulting fit used 20,504 decisive examples (20,505 completed games including one tie). The seven-day snapshot contains 81 unique upcoming fixtures: NBA 16, NFL 14, MLB 4, NHL 47. These counts are snapshot-specific, not service coverage guarantees.
+- The saved prospective tracker initially has 81 pending games and zero scored games. No prospective accuracy or betting return is established.
+- The local app separates current forecasts, historical model comparison, prospective tracking and methodology. Injury coverage is visibly unknown; an automated injury feed is not connected.
+
+## Newer-season development benchmark
+
+Training freezes before January 1, 2026 UTC. The reconstructed evaluation covers 4,200 decisive games: NBA 821, NFL 94, MLB 2,453 and NHL 832. Features update sequentially using earlier results under the seven-day training reconstruction policy. The archive and recent data use different source timing representations; this is not a fully timestamp-observed historical test.
+
+Plain logistic Brier scores: NBA 0.20728, NFL 0.22892, MLB 0.24744, NHL 0.24547. Chronological Platt-calibrated logistic scores: NBA 0.20375, NFL 0.23035, MLB 0.24801, NHL 0.24644. Lower is better. Calibration improved NBA and worsened the other three leagues in this run, so the UI's default remains plain logistic. The calibrated model also uses an earlier base fitting window, so these differences are not an isolated causal estimate of calibration's effect.
+
+The calibration extension was designed after the original five-model 2026 results were inspected. This is a **development comparison**, not an untouched confirmatory test. No hyperparameter search was performed against these results; future outcomes remain necessary for confirmation. Full aggregate measurements and fold cutoffs are recorded in `experiments/evaluation-2026-summary.json`.
+
+Reproduce from a forecast snapshot's normalized training CSV:
+
+```sh
+python -m sportsedge run --games runs/forecast/snapshots/YOUR_TIMESTAMP/games.csv --ml --min-train 100 --test-from 2026-01-01T00:00:00Z --output runs/evaluation-2026
+```
+
+Exact reproduction requires the saved snapshot because new refreshes may include revised upstream data. An old snapshot is not a current prediction. The earlier benchmark below is retained as historical evidence.
+
+## Original October 14 validation
 
 Local environment: Windows, Python 3.12.14, scikit-learn 1.7.2. Exact installed dependencies are in `requirements-ml.lock.txt`.
 

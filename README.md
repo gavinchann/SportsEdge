@@ -1,8 +1,48 @@
 # SportsEdge
 
-Outcome-prediction research for **NBA, NFL, MLB and NHL**. Includes reproducible public-result ingestion, time-aware H2H and availability features, five model variants, chronological backtesting, saved model artifacts and a local dashboard/API.
+Outcome-prediction research for **NBA, NFL, MLB and NHL**. Includes current pregame forecasts, reproducible public-result ingestion, time-aware H2H and availability features, six model variants, chronological backtesting, saved model artifacts and a responsive local dashboard/API.
 
-**Current status:** trained and evaluated on real archived results from 2023–2024. These archives lack historical publication/observation timestamps, so retrospective evaluations explicitly use a configurable result-delay assumption. Historical injuries are **not available** in this run. This is a research prototype, not a live betting service or evidence of profitability.
+**Current status:** prospective forecasts are generated for upcoming games; the expanded dataset spans 2023–October 2026. Historical evaluations explicitly use a result-delay assumption because archives lack historical observation timestamps. Injury data is **not available** in these runs. The dashboard separates upcoming forecasts, historical model performance, and prospective outcome tracking. This is a research prototype, not evidence of betting profitability.
+
+## Predict current and upcoming games
+
+The prospective pipeline retrieves current NBA, NFL, MLB and NHL schedules and final results, refits the models, and saves predictions for scheduled games that have not started. It covers pregame outcomes, **not in-game predictions**. Run after creating the historical archive below:
+
+```sh
+python -m sportsedge forecast --history data/historical/games.csv --ml --days 7
+python -m sportsedge serve --report runs/historical/report.json --forecast runs/forecast/report.json --scorecard runs/forecast/scorecard.json --port 8767
+```
+
+The dashboard's **Upcoming game forecasts** section shows home/away probabilities and local game times. Historical evaluation remains separate. `GET /api/forecast` returns the most recently published forecast snapshot. The server reloads this file on each request; rerun the forecast command to fetch new schedules/results and refit. The refresh button reloads saved predictions; it does not train a model. No background refresh or scheduled service is installed.
+
+- All predictions in a snapshot use the same actual generation cutoff, including games several days away. They cannot use results from games that finish between now and that future fixture. Completed, in-progress, canceled, postponed, exhibition and undated/TBD fixtures are excluded. Games starting during training are removed before publication; the dashboard also hides games once they start.
+- Each refresh fetches up to the preceding 730 days of results (`--lookback-days`, 7–730), plus the requested forecast horizon (`--days`, 1–30). Old archive dates are not counted again. Team aliases align ESPN with the existing NFL/MLB archive; Oakland/Athletics share a history, while Arizona/Utah NHL histories remain separate. Unknown teams fail closed. The provider's schedule can still be revised after collection.
+- Model training combines the verified archive with newly retrieved older finals. **Training features remain a reconstruction:** new historical labels use a seven-day delay after start, not verified historical publication times. This assumption may be wrong for unusually delayed/suspended games or revised data. Recent finals are included in forecast features only after their actual retrieval time. These inference features use observed results, not the reconstructed training availability times.
+- Training windows can contain gaps if the archive ends before the requested lookback. Use a sufficiently long lookback or regenerate the archive. The default covers the gap from the supplied 2023–2024 archive through October 2026. New model fits include previously evaluated data and must not inherit the old backtest scores as their performance estimate. Future forecast outcomes need a separate prospective evaluation.
+- `--availability path/to/availability.csv` accepts existing timestamped reports. There is no automatic injury/lineup provider yet; missing coverage is unknown. A model trained without injury examples has not learned an injury effect. NFL probabilities remain conditional on a decisive result; NHL includes overtime/shootouts.
+- Every refresh creates an immutable `runs/forecast/snapshots/<timestamp>/` folder with raw payloads and retrieval timestamps, normalized training and inference-history CSVs, hashes, features, model artifacts and `forecast.json`. Only after successful completion does it atomically replace `runs/forecast/report.json`. Failed refreshes leave the previous snapshot intact. The UI flags snapshots older than 24 hours; always check the displayed generation time.
+
+The ESPN scoreboard adapter is unofficial and may change or omit events. Fetching a schedule does not guarantee lineup accuracy, forecast accuracy, or profitability. Raw data and forecasts stay local and are excluded from Git.
+
+Reproduce a saved fit without fetching current data (use the snapshot path printed by the forecast command):
+
+```sh
+python -m sportsedge replay --snapshot runs/forecast/snapshots/YOUR_TIMESTAMP --output runs/replay
+```
+
+Replay verifies input hashes and reuses the original cutoff and model settings. It is explicitly marked as an old snapshot. For exact ML reproducibility, use the same locked dependencies. Replay includes all fixtures eligible at the original cutoff; the published forecast may have removed games that started during model fitting.
+
+### Track actual forecast outcomes
+
+Every successful new forecast refresh also updates `runs/forecast/scorecard.json`. It compares saved pregame forecasts to later observed finals, choosing the **earliest issued forecast per game/model** to avoid counting a game multiple times or choosing a favorable forecast after the result. Changed schedules/matchups and ties are excluded and counted explicitly. Finals must have been observed after forecast issuance and before scoring time. Earlier observed finals are retained from the immutable snapshot history even when they leave the latest rolling data window.
+
+To score independently using an observed-result CSV:
+
+```sh
+python -m sportsedge score --snapshots runs/forecast/snapshots --results runs/forecast/snapshots/YOUR_TIMESTAMP/observed.csv
+```
+
+Use **observed** results, not a reconstructed training CSV. `/api/scorecard` and the Model performance view show pending, scored and excluded games. Zero scored games means accuracy is unknown, not zero. Local files are auditable but not externally timestamp-attested; the scorer cannot prove a user has not edited them. Never manufacture or backdate snapshots to claim prospective performance.
 
 ## Quick start
 
@@ -56,7 +96,11 @@ Thirteen fixed features are calculated separately for each league:
 - H2H last-10 win rate, sample count, recency-weighted win rate (365-day half-life) and age of latest meeting.
 - Capped rest difference, weighted absence difference, report-coverage difference, separate home/away report-presence indicators, and neutral venue.
 
-Baselines are a smoothed training-only home prior, Elo, and fixed L2-regularized logistic regression. `--ml` adds histogram gradient boosting (100 iterations, seven leaves, minimum 30 samples/leaf, L2=2, learning rate=.05, seed=42, early stopping disabled) and a logistic ablation with all four direct H2H features zeroed. All settings were fixed before inspecting held-out scores. No test-set tuning or random validation split is used. Stronger model capacity does not guarantee stronger results.
+Baselines are a smoothed training-only home prior, Elo, and fixed L2-regularized logistic regression. `--ml` adds histogram gradient boosting (100 iterations, seven leaves, minimum 30 samples/leaf, L2=2, learning rate=.05, seed=42, early stopping disabled), a logistic ablation with all four direct H2H features zeroed, and chronologically calibrated logistic regression. The original five variants' settings were fixed before the initial historical benchmark. Stronger model capacity does not guarantee stronger results.
+
+The calibrated model uses the first 80% of each pre-test training window for the base logistic model and the later 20% for Platt calibration (`LogisticRegression`, C=1, fixed seed). Base labels must be known strictly before the first calibration prediction; all calibration labels must be known before the outer evaluation/forecast cutoff. It requires at least 100 base and 30 calibration examples with both classes; otherwise it explicitly falls back to plain logistic. It retains its earlier base fit rather than refitting it on the calibration labels. Artifacts record both cutoffs and sample sizes. There is no random split or use of test labels in fitting.
+
+The calibration extension was designed after inspecting the five-model 2026 comparison. Its 2026 comparison is therefore a **development benchmark**, not a new untouched confirmatory test. Calibration improved NBA Brier score in that comparison and worsened it for the other leagues; it is not the default forecast model. Reserve later outcomes for confirmation.
 
 `--test-from` trains each league once using only labels known before the boundary. Weights remain frozen throughout evaluation; features update sequentially as prior game results become available. This represents rolling prediction with frozen weights, not all predictions made on January 1. Without this option, the original expanding-window backtest retrains at each chronological fixture block. The two protocols should not be conflated.
 
@@ -106,4 +150,4 @@ See [VALIDATION.md](VALIDATION.md) and [experiments/historical-summary.json](exp
 
 Tests exercise future-result exclusion, late and stale reports, H2H direction, league isolation, exact-cutoff embargoes, snapshot observation times, suspended MLB completion, All-Star filtering, NHL support, frozen training, deterministic reports, schema validation and saved model artifacts. GitHub Actions tests core and ML configurations.
 
-Feature construction rescans prior games and prioritizes auditability over scale. There is no season reset, roster revision model, dedicated goalie/pitcher/QB feature, full lineup coverage, live data service or automatic retraining schedule. New seasons, current injury feeds and later untouched evaluation windows remain future work.
+Feature construction rescans prior games and prioritizes auditability over scale. There is no season reset, roster revision model, dedicated goalie/pitcher/QB feature, full lineup coverage, in-game model or automatic retraining schedule. Current injury feeds and later untouched evaluation windows remain future work.

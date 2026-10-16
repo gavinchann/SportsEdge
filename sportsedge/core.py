@@ -79,7 +79,7 @@ def sigmoid(x):
 
 def features(target, games, availability, max_availability_age_hours=72):
     cutoff = target["prediction_at"]
-    history = sorted((g for g in games if g["league"] == target["league"] and g["result_known_at"] and g["result_known_at"] < cutoff), key=lambda g: (g["result_known_at"], g["game_id"]))
+    history = sorted((g for g in games if g["league"] == target["league"] and g["result_known_at"] and g["result_known_at"] < cutoff), key=lambda g: (g["start_at"], g["game_id"]))
     ratings, records, last, meetings, margins = {}, {}, {}, [], {}
     home, away = target["home"], target["away"]
     for g in history:
