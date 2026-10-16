@@ -150,4 +150,8 @@ See [VALIDATION.md](VALIDATION.md) and [experiments/historical-summary.json](exp
 
 Tests exercise future-result exclusion, late and stale reports, H2H direction, league isolation, exact-cutoff embargoes, snapshot observation times, suspended MLB completion, All-Star filtering, NHL support, frozen training, deterministic reports, schema validation and saved model artifacts. GitHub Actions tests core and ML configurations.
 
-Feature construction rescans prior games and prioritizes auditability over scale. There is no season reset, roster revision model, dedicated goalie/pitcher/QB feature, full lineup coverage, in-game model or automatic retraining schedule. Current injury feeds and later untouched evaluation windows remain future work.
+Feature construction rescans prior games and prioritizes auditability over scale. There is no season reset, roster revision model, dedicated goalie/pitcher/QB feature, full lineup coverage, in-game model or automatic retraining schedule. Game-specific injury modeling and later untouched evaluation windows remain future work.
+
+### Current injury context
+
+Each forecast run snapshots ESPN team injury reports for all four leagues, retaining retrieval timestamps and raw response hashes. Matchup details show player status, publication date, and a warning for reports older than 72 hours. Missing reports do not establish a healthy roster. Provider failures remain explicitly unavailable and do not prevent forecasting. These team-level reports are display context only: they are not game-specific labels and do not change model probabilities. Explicit normalized `--availability` inputs remain the separate model-input path. Raw injury snapshots stay in ignored local run folders.

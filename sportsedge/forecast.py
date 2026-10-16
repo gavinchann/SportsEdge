@@ -117,6 +117,9 @@ def forecast(history_path, output="runs/forecast", days=7, lookback_days=730, ml
             if index % 100 == 0:
                 print(f"Current schedules/results: {index + 1}/{len(tasks)} snapshots", flush=True)
     write_csv(snapshot / "observed.csv", GAME_COLUMNS, [g for _, g in unique.values()])
+    from .injuries import collect
+    injury_context = collect(snapshot / "raw-injuries")
+    (snapshot / "injuries.json").write_text(json.dumps(injury_context, indent=2), encoding="utf-8")
     as_of = datetime.now(timezone.utc)
     training, actual, fixtures = prepare(archive, read_games(snapshot / "observed.csv"), as_of, as_of + timedelta(days=days))
     write_csv(snapshot / "inference-history.csv", GAME_COLUMNS, [serialize(g) for g in actual])
@@ -131,6 +134,7 @@ def forecast(history_path, output="runs/forecast", days=7, lookback_days=730, ml
         "history_sha256": digest, "history_source": source, "sources": sources,
         "inference_history_sha256": hashlib.sha256((snapshot / "inference-history.csv").read_bytes()).hexdigest(),
         "availability_sha256": hashlib.sha256(Path(availability_path).read_bytes()).hexdigest() if availability_path else None,
+        "injuries_sha256": hashlib.sha256((snapshot / "injuries.json").read_bytes()).hexdigest(),
         "ml": ml, "min_train": min_train,
         "generated_at": as_of.isoformat(), "lookback_days": lookback_days}
     (snapshot / "source.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -141,7 +145,7 @@ def forecast(history_path, output="runs/forecast", days=7, lookback_days=730, ml
     # for a fixture that started while fitting was in progress.
     finished = datetime.now(timezone.utc)
     report["upcoming"] = [r for r in report["upcoming"] if stamp(r["start_at"]) > finished]
-    report.update(data_kind="prospective", generated_at=as_of.isoformat(), finished_at=finished.isoformat(),
+    report.update(injury_context=injury_context, data_kind="prospective", generated_at=as_of.isoformat(), finished_at=finished.isoformat(),
         warning="Pregame forecasts, not evaluated results. Refitted on reconstructed historical features; current results were observed at retrieval. Injuries/lineups are unknown unless timestamped reports are supplied. No live accuracy or profitability established.",
         forecast={"horizon_days": days, "lookback_days": lookback_days, "snapshot": str(snapshot),
                   "schedule_first_observed_at": min(m["retrieved_at"] for m in sources),
@@ -177,7 +181,7 @@ def replay(snapshot, output):
     if output.resolve() == snapshot.resolve() or snapshot.resolve() in output.resolve().parents:
         raise ValueError("Replay output must be outside the immutable snapshot")
     manifest = json.loads((snapshot / "source.json").read_text(encoding="utf-8"))
-    for name, key in (("games.csv", "games_sha256"), ("inference-history.csv", "inference_history_sha256"), ("availability.csv", "availability_sha256")):
+    for name, key in (("games.csv", "games_sha256"), ("inference-history.csv", "inference_history_sha256"), ("availability.csv", "availability_sha256"), ("injuries.json", "injuries_sha256")):
         if manifest.get(key) and hashlib.sha256((snapshot / name).read_bytes()).hexdigest() != manifest[key]:
             raise ValueError(f"Snapshot integrity check failed: {name}")
     if not manifest.get("inference_history_sha256"):
